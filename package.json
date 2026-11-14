@@ -1,0 +1,15 @@
+{
+  "name": "chamada-amigos",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Chamada de voz, câmera e tela com som para amigos (WebRTC)",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

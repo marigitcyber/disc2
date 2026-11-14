@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Chamada com os amigos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #1f1630;
+    --panel: #2b1f42;
+    --panel-2: #382a55;
+    --ink: #f4efff;
+    --dim: #b3a6d1;
+    --mint: #7ee8c1;
+    --rose: #ff6b8b;
+    --font: "Bricolage Grotesque", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 16px;
+    line-height: 1.4;
+  }
+  button, input { font: inherit; color: inherit; }
+  :focus-visible { outline: 3px solid var(--mint); outline-offset: 2px; }
+  [hidden] { display: none !important; }
+
+  /* ---------- Entrada ---------- */
+  #lobby {
+    min-height: 100%;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+  }
+  .card {
+    width: min(100%, 440px);
+    background: var(--panel);
+    border-radius: 28px;
+    padding: 36px 32px 32px;
+  }
+  .card h1 {
+    margin: 0 0 8px;
+    font-size: clamp(2.2rem, 7vw, 3rem);
+    line-height: 1.02;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .card p { margin: 0 0 28px; color: var(--dim); max-width: 34ch; }
+  label { display: block; margin: 0 0 18px; font-weight: 600; font-size: 0.95rem; }
+  input {
+    display: block;
+    width: 100%;
+    margin-top: 6px;
+    padding: 13px 16px;
+    border: 2px solid transparent;
+    border-radius: 14px;
+    background: var(--panel-2);
+  }
+  input::placeholder { color: #8d7fb0; }
+  input:focus { border-color: var(--mint); outline: none; }
+  .primary {
+    width: 100%;
+    margin-top: 6px;
+    padding: 14px 20px;
+    border: 0;
+    border-radius: 14px;
+    background: var(--mint);
+    color: #123127;
+    font-weight: 800;
+    cursor: pointer;
+  }
+  .primary:hover { filter: brightness(1.06); }
+  .hint { margin: 14px 0 0 !important; font-size: 0.88rem; }
+
+  /* ---------- Sala ---------- */
+  #room { height: 100%; display: flex; flex-direction: column; }
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 20px 0;
+  }
+  .topbar strong { font-weight: 800; font-size: 1.1rem; }
+  .topbar span { color: var(--dim); }
+  .link-btn {
+    border: 0;
+    background: var(--panel);
+    padding: 8px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .link-btn:hover { background: var(--panel-2); }
+
+  #grid {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+    gap: 14px;
+    padding: 18px 20px;
+    align-content: center;
+  }
+  .tile {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    border-radius: 22px;
+    background: hsl(var(--h, 260) 32% 26%);
+  }
+  .tile video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background: #000;
+  }
+  .tile.me video { transform: scaleX(-1); }
+  .tile.screen { grid-column: span 2; border-radius: 12px; cursor: zoom-in; }
+  .tile.screen video { object-fit: contain; transform: none; }
+  .tile.no-video video { opacity: 0; }
+  .avatar {
+    position: absolute;
+    inset: 0;
+    display: none;
+    place-items: center;
+    font-size: clamp(2.5rem, 8vw, 4.5rem);
+    font-weight: 800;
+    color: hsl(var(--h, 260) 70% 85%);
+  }
+  .tile.no-video .avatar { display: grid; }
+  .label {
+    position: absolute;
+    left: 12px;
+    bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    max-width: calc(100% - 24px);
+    padding: 5px 12px;
+    border-radius: 999px;
+    background: rgba(20, 12, 34, 0.72);
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+  .label .n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .label .m { display: none; color: var(--rose); }
+  .tile.is-muted .label .m { display: inline; }
+  .kick {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 2;
+    border: 0;
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: var(--rose);
+    color: #3a0b17;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .kick:hover { filter: brightness(1.08); }
+  .empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: var(--dim);
+    padding: 8px;
+  }
+
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    padding: 4px 20px 22px;
+  }
+  .controls button {
+    border: 0;
+    padding: 13px 20px;
+    border-radius: 999px;
+    background: var(--panel);
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .controls button:hover { background: var(--panel-2); }
+  .controls button.off { background: var(--rose); color: #3a0b17; }
+  .controls button.live { background: var(--mint); color: #123127; }
+  .controls .leave { background: transparent; box-shadow: inset 0 0 0 2px var(--rose); color: var(--rose); }
+  .controls .leave:hover { background: var(--rose); color: #3a0b17; }
+
+  .micbox {
+    margin: 0 0 18px;
+    padding: 16px;
+    border-radius: 18px;
+    background: var(--panel-2);
+  }
+  .mic-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+  .badge {
+    padding: 3px 11px;
+    border-radius: 999px;
+    background: #4a3b6e;
+    color: var(--ink);
+    font-size: 0.82rem;
+    font-weight: 700;
+  }
+  .badge.good { background: var(--mint); color: #123127; }
+  .badge.bad { background: var(--rose); color: #3a0b17; }
+  .micbox p { margin: 0 0 12px; max-width: none; font-size: 0.95rem; color: var(--ink); }
+  .meter { height: 10px; margin: 0 0 12px; border-radius: 999px; background: #241a3a; overflow: hidden; }
+  .meter i { display: block; width: 0; height: 100%; background: var(--mint); transition: width 80ms linear; }
+  .secondary {
+    border: 0;
+    padding: 11px 18px;
+    border-radius: 12px;
+    background: var(--mint);
+    color: #123127;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .secondary:hover { filter: brightness(1.06); }
+  .help { margin-top: 12px; padding: 14px 16px; border-radius: 14px; background: #241a3a; font-size: 0.93rem; }
+  .help strong { display: block; margin-bottom: 6px; }
+  .help ol { margin: 0 0 12px; padding-left: 20px; }
+  .help li { margin-bottom: 4px; }
+  .help-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+  .alert {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+    margin: 0 0 18px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: #4a2a45;
+    font-size: 0.93rem;
+  }
+  #roomMic { margin: 12px 20px 0; }
+  #roomMic .help { flex-basis: 100%; margin-top: 0; }
+  #toast {
+    position: fixed;
+    left: 50%;
+    bottom: 96px;
+    transform: translateX(-50%);
+    max-width: min(92vw, 460px);
+    padding: 12px 18px;
+    border-radius: 14px;
+    background: var(--ink);
+    color: #231838;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  @media (max-width: 640px) {
+    .tile.screen { grid-column: span 1; }
+    .card { padding: 28px 22px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+<main id="lobby">
+  <div class="card">
+    <h1>Chamada com os amigos</h1>
+    <p>Voz, câmera e tela com som. Quem tiver o código da sala entra.</p>
+    <label>Seu nome
+      <input id="name" maxlength="24" placeholder="Como os amigos te chamam" autocomplete="nickname">
+    </label>
+    <label>Código da sala
+      <input id="roomCode" maxlength="40" placeholder="ex.: sexta-a-noite" autocomplete="off">
+    </label>
+    <div class="alert" id="inAppWarn" hidden>
+      <div><strong>Abra no navegador.</strong> Este link foi aberto dentro de outro aplicativo, que costuma bloquear o microfone. Toque nos três pontinhos e escolha "Abrir no navegador" (Chrome ou Safari).</div>
+      <button class="secondary" id="copyLinkBtn">Copiar link</button>
+    </div>
+    <div class="micbox">
+      <div class="mic-head">
+        <strong>Microfone</strong>
+        <span class="badge" id="micBadge">Não liberado</span>
+      </div>
+      <p id="micMsg"></p>
+      <div class="meter" hidden><i id="meterBar"></i></div>
+      <button class="secondary" id="micAllowBtn">Permitir microfone</button>
+      <div class="help" id="micHelp" hidden></div>
+    </div>
+    <button class="primary" id="joinBtn">Entrar na sala</button>
+    <p class="hint">Todo mundo usa o mesmo código. Dá para entrar sem microfone, mas aí você só ouve.</p>
+  </div>
+</main>
+
+<div id="room" hidden>
+  <div class="topbar">
+    <div><strong id="roomTitle"></strong> <span id="count"></span></div>
+    <button class="link-btn" id="copyBtn">Copiar link da sala</button>
+  </div>
+  <div class="alert" id="roomMic" hidden>
+    <div><strong>Seu microfone está desligado.</strong> <span id="roomMicMsg"></span></div>
+    <button class="secondary" id="roomMicBtn">Liberar microfone</button>
+    <div class="help" id="roomMicHelp" hidden></div>
+  </div>
+  <div id="grid"></div>
+  <div class="controls">
+    <button id="micBtn">Silenciar microfone</button>
+    <button id="camBtn">Ligar câmera</button>
+    <button id="screenBtn">Compartilhar tela</button>
+    <button id="leaveBtn" class="leave">Sair</button>
+  </div>
+</div>
+
+<div id="toast" role="status" hidden></div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const SCREEN_BITRATE = { video: 4_000_000, audio: 128_000 };
+const ICE = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+  // Se alguém não conseguir conectar, adicione um servidor TURN aqui:
+  // { urls: 'turn:SEU_SERVIDOR:3478', username: 'usuario', credential: 'senha' },
+];
+
+let ws, myId, myName, roomCode, hostId = null, leaving = false;
+const peers = new Map();            // id -> { id, name, pc, senders, streams, ... }
+const tiles = new Map();            // chave -> elemento
+const localStream = new MediaStream(); // microfone + câmera
+let micTrack = null;
+let camTrack = null;
+let screenStream = null;
+
+const grid = $('#grid');
+
+/* ---------- Avisos ---------- */
+let toastTimer;
+function toast(text) {
+  const el = $('#toast');
+  el.textContent = text;
+  el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (el.hidden = true), 5000);
+}
+const aviso = sessionStorage.getItem('aviso');
+if (aviso) {
+  sessionStorage.removeItem('aviso');
+  toast(aviso);
+}
+// Identifica este aparelho para o anfitrião poder remover alguém.
+const token = localStorage.getItem('token') ||
+  (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2) + Date.now());
+localStorage.setItem('token', token);
+
+/* ---------- Entrada ---------- */
+$('#roomCode').value = decodeURIComponent(location.hash.slice(1));
+$('#name').value = localStorage.getItem('nome') || '';
+$('#joinBtn').addEventListener('click', join);
+['#name', '#roomCode'].forEach((s) =>
+  $(s).addEventListener('keydown', (e) => e.key === 'Enter' && join())
+);
+
+async function join() {
+  myName = $('#name').value.trim() || 'Anônimo';
+  roomCode = $('#roomCode').value.trim().toLowerCase();
+  if (!roomCode) return $('#roomCode').focus();
+
+  localStorage.setItem('nome', myName);
+
+  if (!micTrack && !micTried) await requestMic();
+  stopMeter();
+  if (!micTrack) {
+    toast('Você entrou sem microfone e só vai ouvir. Use "Liberar microfone" para falar.');
+  }
+
+  location.hash = encodeURIComponent(roomCode);
+  connect();
+}
+
+/* ---------- Microfone ---------- */
+let micKind = 'idle';
+let micTried = false;
+let audioCtx, meterTimer;
+
+const MIC_TEXT = {
+  idle: ['Não liberado', 'Para falar na chamada, o navegador precisa da sua permissão. Toque no botão abaixo e, quando a janela aparecer, toque em "Permitir".'],
+  ok: ['Liberado', 'Microfone funcionando. Fale alguma coisa: a barra abaixo deve se mexer.'],
+  denied: ['Bloqueado', 'O navegador bloqueou o microfone para este site. Siga os passos abaixo para liberar.'],
+  none: ['Não encontrado', 'Nenhum microfone foi encontrado. Conecte um fone ou microfone e tente de novo.'],
+  busy: ['Em uso', 'Outro programa está usando o microfone. Feche chamadas, gravadores e jogos que usem o microfone e tente de novo.'],
+  insecure: ['Endereço inseguro', 'Este endereço não usa HTTPS, então o navegador não libera o microfone. Abra o link que começa com https://.'],
+  error: ['Erro', 'Não foi possível acessar o microfone. Recarregue a página e tente de novo.'],
+};
+
+const IN_APP = /FBAN|FBAV|FB_IAB|Instagram|Line\/|TikTok|Snapchat|MicroMessenger|; wv\)/.test(navigator.userAgent);
+
+function micSteps() {
+  const ua = navigator.userAgent;
+  const ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const android = /Android/.test(ua);
+  if (ios) {
+    return [
+      'Toque em "aA" na barra de endereço (canto esquerdo).',
+      'Escolha "Ajustes do site web" e, em Microfone, selecione "Permitir".',
+      'Volte e recarregue a página.',
+      'Se não aparecer: abra Ajustes do iPhone → Safari → Microfone e escolha "Perguntar" ou "Permitir".',
+    ];
+  }
+  if (android) {
+    return [
+      'Toque no ícone à esquerda do endereço (cadeado ou ajustes).',
+      'Toque em "Permissões", depois em "Microfone", e escolha "Permitir".',
+      'Recarregue a página.',
+      'Se não aparecer: Ajustes do Android → Apps → Chrome → Permissões → Microfone → Permitir.',
+    ];
+  }
+  return [
+    'Clique no ícone à esquerda do endereço (cadeado ou ajustes).',
+    'Em "Microfone", escolha "Permitir" (ou ative a chave do microfone).',
+    'Recarregue a página.',
+    'Se continuar bloqueado no Windows: Configurações → Privacidade e segurança → Microfone → ative "Permitir que aplicativos da área de trabalho acessem o microfone".',
+  ];
+}
+
+function renderMicHelp(box, kind, retry) {
+  box.innerHTML = '';
+  const steps = kind === 'denied' ? micSteps() : null;
+  const canRetry = ['denied', 'none', 'busy', 'error'].includes(kind);
+  box.hidden = !steps && !canRetry;
+  if (steps) {
+    const h = document.createElement('strong');
+    h.textContent = 'Como liberar o microfone';
+    const ol = document.createElement('ol');
+    steps.forEach((t) => {
+      const li = document.createElement('li');
+      li.textContent = t;
+      ol.append(li);
+    });
+    box.append(h, ol);
+  }
+  if (canRetry) {
+    const row = document.createElement('div');
+    row.className = 'help-actions';
+    const a = document.createElement('button');
+    a.className = 'secondary';
+    a.textContent = 'Tentar de novo';
+    a.onclick = retry;
+    const b = document.createElement('button');
+    b.className = 'secondary';
+    b.textContent = 'Recarregar a página';
+    b.onclick = () => location.reload();
+    row.append(a, b);
+    box.append(row);
+  }
+}
+
+function setMicStatus(kind) {
+  micKind = kind;
+  const [badge, msg] = MIC_TEXT[kind];
+  const b = $('#micBadge');
+  b.textContent = badge;
+  b.className = 'badge' + (kind === 'ok' ? ' good' : kind === 'idle' ? '' : ' bad');
+  $('#micMsg').textContent = msg;
+  $('#micAllowBtn').hidden = kind !== 'idle';
+  $('.meter').hidden = kind !== 'ok';
+  renderMicHelp($('#micHelp'), kind, requestMic);
+  updateRoomMic();
+}
+
+function updateRoomMic() {
+  const box = $('#roomMic');
+  const show = !!myId && !micTrack;
+  box.hidden = !show;
+  if (!show) return;
+  $('#roomMicMsg').textContent = micKind === 'idle'
+    ? 'Você está só ouvindo. Libere o microfone para falar.'
+    : MIC_TEXT[micKind][1];
+  $('#roomMicBtn').hidden = micKind !== 'idle';
+  renderMicHelp($('#roomMicHelp'), micKind, enableMic);
+}
+
+function errKind(err) {
+  const n = err && err.name;
+  if (n === 'NotAllowedError' || n === 'SecurityError') return 'denied';
+  if (n === 'NotFoundError' || n === 'OverconstrainedError') return 'none';
+  if (n === 'NotReadableError' || n === 'AbortError') return 'busy';
+  return 'error';
+}
+
+async function requestMic() {
+  if (micTrack) return true;
+  if (!window.isSecureContext || !navigator.mediaDevices) {
+    setMicStatus('insecure');
+    return false;
+  }
+  micTried = true;
+  try {
+    const mic = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    });
+    micTrack = mic.getAudioTracks()[0];
+    localStream.addTrack(micTrack);
+    setMicStatus('ok');
+    if (!$('#lobby').hidden) startMeter();
+    return true;
+  } catch (err) {
+    setMicStatus(errKind(err));
+    return false;
+  }
+}
+
+// Libera o microfone já dentro da sala e começa a enviar o som para todo mundo.
+async function enableMic() {
+  if (micTrack) return;
+  if (!(await requestMic())) return;
+  peers.forEach((p) => addSender(p, micTrack, localStream));
+  stateChanged();
+  updateRoomMic();
+}
+
+function startMeter() {
+  stopMeter();
+  if (!micTrack) return;
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const src = audioCtx.createMediaStreamSource(new MediaStream([micTrack]));
+    const an = audioCtx.createAnalyser();
+    an.fftSize = 512;
+    src.connect(an);
+    const data = new Uint8Array(an.fftSize);
+    meterTimer = setInterval(() => {
+      an.getByteTimeDomainData(data);
+      let peak = 0;
+      for (const v of data) peak = Math.max(peak, Math.abs(v - 128));
+      $('#meterBar').style.width = Math.min(100, (peak / 128) * 220) + '%';
+    }, 80);
+  } catch {}
+}
+function stopMeter() {
+  clearInterval(meterTimer);
+  if (audioCtx) audioCtx.close().catch(() => {});
+  audioCtx = null;
+}
+
+$('#micAllowBtn').addEventListener('click', requestMic);
+$('#roomMicBtn').addEventListener('click', enableMic);
+$('#copyLinkBtn').addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(location.href);
+    toast('Link copiado. Cole no Chrome ou no Safari.');
+  } catch {
+    toast(location.href);
+  }
+});
+
+$('#inAppWarn').hidden = !IN_APP;
+if (!window.isSecureContext || !navigator.mediaDevices) setMicStatus('insecure');
+else setMicStatus('idle');
+
+// Se o navegador já tem uma decisão guardada para este site, mostra o estado real.
+if (navigator.permissions && navigator.permissions.query) {
+  navigator.permissions.query({ name: 'microphone' }).then((st) => {
+    const apply = () => {
+      if (micTrack) return;
+      if (st.state === 'denied') setMicStatus('denied');
+      else if (st.state === 'granted') ($('#lobby').hidden ? enableMic() : requestMic());
+      else if (micKind === 'denied') setMicStatus('idle');
+    };
+    apply();
+    st.onchange = apply;
+  }).catch(() => {});
+}
+
+function connect() {
+  ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`);
+  ws.onopen = () => ws.send(JSON.stringify({ type: 'join', room: roomCode, name: myName, token }));
+  ws.onclose = () => {
+    if (!leaving) toast('Conexão com o servidor perdida. Recarregue a página para entrar de novo.');
+  };
+  ws.onmessage = (e) => {
+    const m = JSON.parse(e.data);
+    if (m.type === 'joined') {
+      myId = m.id;
+      hostId = m.hostId;
+      showRoom();
+      m.peers.forEach((p) => createPeer(p.id, p.name));
+    } else if (m.type === 'host') {
+      hostId = m.id;
+      refreshAll();
+    } else if (m.type === 'kicked' || m.type === 'banned') {
+      sessionStorage.setItem('aviso', m.type === 'kicked'
+        ? 'O anfitrião removeu você da chamada.'
+        : 'O anfitrião removeu você desta sala.');
+      leaveRoom();
+    } else if (m.type === 'full') {
+      toast('Sala cheia (limite de 8 pessoas).');
+      ws.close();
+    } else if (m.type === 'peer-joined') {
+      createPeer(m.id, m.name);
+    } else if (m.type === 'peer-left') {
+      removePeer(m.id);
+    } else if (m.type === 'signal') {
+      handleSignal(m.from, m.name, m.data);
+    }
+  };
+}
+
+function showRoom() {
+  $('#lobby').hidden = true;
+  $('#room').hidden = false;
+  $('#roomTitle').textContent = roomCode;
+  renderLocal();
+  updateButtons();
+  updateCount();
+  updateRoomMic();
+}
+
+const sig = (to, data) => ws.readyState === 1 && ws.send(JSON.stringify({ type: 'signal', to, data }));
+
+/* ---------- Conexões entre pessoas (WebRTC) ---------- */
+function myState() {
+  return {
+    muted: !micTrack || !micTrack.enabled,
+    cam: !!camTrack,
+    screenId: screenStream ? screenStream.id : null,
+  };
+}
+const broadcastState = () => sig(null, { state: myState() });
+
+function createPeer(id, name) {
+  if (peers.has(id)) return peers.get(id);
+  const pc = new RTCPeerConnection({ iceServers: ICE });
+  const peer = {
+    id, name, pc,
+    senders: new Map(),
+    streams: new Map(),
+    makingOffer: false,
+    ignoreOffer: false,
+    polite: myId > id, // quem tem id "maior" cede em caso de conflito
+    muted: true, cam: false, screenId: null,
+  };
+  peers.set(id, peer);
+
+  pc.onicecandidate = (e) => e.candidate && sig(id, { candidate: e.candidate });
+  pc.onnegotiationneeded = async () => {
+    try {
+      peer.makingOffer = true;
+      await pc.setLocalDescription();
+      sig(id, { description: pc.localDescription });
+    } catch (err) {
+      console.error(err);
+    } finally {
+      peer.makingOffer = false;
+    }
+  };
+  pc.ontrack = ({ track, streams }) => {
+    const s = streams[0];
+    if (!s) return;
+    peer.streams.set(s.id, s);
+    s.onremovetrack = () => renderPeer(peer);
+    track.onmute = track.onunmute = track.onended = () => renderPeer(peer);
+    renderPeer(peer);
+  };
+
+  localStream.getTracks().forEach((t) => addSender(peer, t, localStream));
+  if (screenStream) screenStream.getTracks().forEach((t) => addSender(peer, t, screenStream, SCREEN_BITRATE[t.kind]));
+  sig(id, { state: myState() });
+
+  renderPeer(peer);
+  updateCount();
+  return peer;
+}
+
+function addSender(peer, track, stream, maxBitrate) {
+  const sender = peer.pc.addTrack(track, stream);
+  peer.senders.set(track, sender);
+  if (maxBitrate) tuneSender(sender, track.kind, maxBitrate);
+}
+
+// Sobe o limite de qualidade da transmissão (jogo): mais taxa e prioridade para a fluidez.
+async function tuneSender(sender, kind, maxBitrate) {
+  for (let i = 0; i < 5; i++) {
+    try {
+      const p = sender.getParameters();
+      if (!p.encodings || !p.encodings.length) p.encodings = [{}];
+      p.encodings[0].maxBitrate = maxBitrate;
+      if (kind === 'video') p.degradationPreference = 'maintain-framerate';
+      await sender.setParameters(p);
+      return;
+    } catch {
+      await new Promise((r) => setTimeout(r, 1000));
+    }
+  }
+}
+function removeSender(peer, track) {
+  const s = peer.senders.get(track);
+  if (!s) return;
+  try { peer.pc.removeTrack(s); } catch {}
+  peer.senders.delete(track);
+}
+
+async function handleSignal(from, name, data) {
+  const peer = peers.get(from) || createPeer(from, name);
+  const pc = peer.pc;
+
+  if (data.state) {
+    peer.muted = data.state.muted;
+    peer.cam = data.state.cam;
+    peer.screenId = data.state.screenId;
+    return renderPeer(peer);
+  }
+  try {
+    if (data.description) {
+      const collision = data.description.type === 'offer' && (peer.makingOffer || pc.signalingState !== 'stable');
+      peer.ignoreOffer = !peer.polite && collision;
+      if (peer.ignoreOffer) return;
+      await pc.setRemoteDescription(data.description);
+      if (data.description.type === 'offer') {
+        await pc.setLocalDescription();
+        sig(from, { description: pc.localDescription });
+      }
+    } else if (data.candidate) {
+      try { await pc.addIceCandidate(data.candidate); }
+      catch (err) { if (!peer.ignoreOffer) throw err; }
+    }
+  } catch (err) {
+    console.error(err);
+  }
+}
+
+function removePeer(id) {
+  const peer = peers.get(id);
+  if (!peer) return;
+  peer.pc.close();
+  peers.delete(id);
+  removeTile(`${id}:cam`);
+  removeTile(`${id}:screen`);
+  updateCount();
+}
+
+/* ---------- Quadros de vídeo ---------- */
+function hueOf(text) {
+  let h = 0;
+  for (const c of text) h = (h * 31 + c.charCodeAt(0)) % 360;
+  return h;
+}
+
+const isHost = () => hostId !== null && hostId === myId;
+
+function setTile(key, { stream, name, label, muted, video, local, screen, peerId }) {
+  let el = tiles.get(key);
+  if (!el) {
+    el = document.createElement('div');
+    el.className = 'tile' + (screen ? ' screen' : '') + (local && !screen ? ' me' : '');
+    el.innerHTML = '<video autoplay playsinline></video><div class="avatar"></div>' +
+      '<button class="kick" hidden>Remover da chamada</button>' +
+      '<div class="label"><span class="m" title="Microfone silenciado">🔇</span><span class="n"></span></div>';
+    if (screen) {
+      el.title = 'Clique para tela cheia';
+      el.addEventListener('click', () => el.requestFullscreen && el.requestFullscreen());
+    }
+    el.querySelector('.kick').addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      if (confirm(`Remover ${el.dataset.name} da chamada?`)) {
+        ws.send(JSON.stringify({ type: 'kick', id: el.dataset.peer }));
+      }
+    });
+    grid.append(el);
+    tiles.set(key, el);
+  }
+  const v = el.querySelector('video');
+  if (v.srcObject !== (stream || null)) v.srcObject = stream || null;
+  v.muted = !!local; // nunca toca o próprio som (evita eco)
+  el.dataset.peer = peerId || '';
+  el.dataset.name = name;
+  el.style.setProperty('--h', hueOf(name));
+  el.querySelector('.n').textContent = label || name;
+  el.querySelector('.avatar').textContent = (name.trim()[0] || '?').toUpperCase();
+  el.querySelector('.kick').hidden = !(isHost() && peerId && !local && !screen);
+  el.classList.toggle('no-video', !video);
+  el.classList.toggle('is-muted', !!muted && !screen);
+}
+
+function removeTile(key) {
+  const el = tiles.get(key);
+  if (el) el.remove();
+  tiles.delete(key);
+}
+
+function renderPeer(peer) {
+  const all = [...peer.streams.values()];
+  const camStream = all.find((s) => s.id !== peer.screenId);
+  const scrStream = peer.screenId ? peer.streams.get(peer.screenId) : null;
+
+  setTile(`${peer.id}:cam`, {
+    stream: camStream,
+    name: peer.name,
+    label: peer.id === hostId ? `${peer.name} (anfitrião)` : peer.name,
+    muted: peer.muted,
+    video: peer.cam && !!camStream && camStream.getVideoTracks().length > 0,
+    peerId: peer.id,
+  });
+  if (scrStream) {
+    setTile(`${peer.id}:screen`, { stream: scrStream, name: peer.name, label: `Tela de ${peer.name}`, video: true, screen: true, peerId: peer.id });
+  } else {
+    removeTile(`${peer.id}:screen`);
+  }
+}
+
+function renderLocal() {
+  const st = myState();
+  setTile('me:cam', {
+    stream: localStream,
+    name: myName,
+    label: `${myName} (você${isHost() ? ', anfitrião' : ''})`,
+    muted: st.muted,
+    video: !!camTrack,
+    local: true,
+  });
+  if (screenStream) {
+    setTile('me:screen', { stream: screenStream, name: myName, label: 'Sua tela', video: true, local: true, screen: true });
+  } else {
+    removeTile('me:screen');
+  }
+}
+
+function refreshAll() {
+  if (!myId) return;
+  renderLocal();
+  peers.forEach(renderPeer);
+  updateCount();
+}
+
+function updateCount() {
+  const n = peers.size + 1;
+  $('#count').textContent = (n === 1 ? '· só você por aqui' : `· ${n} pessoas`) + (isHost() ? ' · você é o anfitrião' : '');
+  let empty = $('#empty');
+  if (n === 1 && !empty) {
+    empty = document.createElement('div');
+    empty.id = 'empty';
+    empty.className = 'empty';
+    empty.textContent = 'Chame os amigos: copie o link da sala e envie.';
+    grid.append(empty);
+  } else if (n > 1 && empty) {
+    empty.remove();
+  }
+}
+
+/* ---------- Botões ---------- */
+function updateButtons() {
+  const muted = myState().muted;
+  $('#micBtn').textContent = !micTrack ? 'Liberar microfone' : muted ? 'Ativar microfone' : 'Silenciar microfone';
+  $('#micBtn').classList.toggle('off', muted);
+  $('#camBtn').textContent = camTrack ? 'Desligar câmera' : 'Ligar câmera';
+  $('#camBtn').classList.toggle('live', !!camTrack);
+  $('#screenBtn').textContent = screenStream ? 'Parar de compartilhar' : 'Compartilhar tela';
+  $('#screenBtn').classList.toggle('live', !!screenStream);
+}
+
+function stateChanged() {
+  broadcastState();
+  renderLocal();
+  updateButtons();
+}
+
+$('#micBtn').addEventListener('click', () => {
+  if (!micTrack) return enableMic();
+  micTrack.enabled = !micTrack.enabled; // desativa o som sem derrubar a conexão
+  stateChanged();
+});
+
+$('#camBtn').addEventListener('click', async () => {
+  if (camTrack) {
+    const t = camTrack;
+    camTrack = null;
+    peers.forEach((p) => removeSender(p, t));
+    localStream.removeTrack(t);
+    t.stop();
+    return stateChanged();
+  }
+  try {
+    const cam = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 } });
+    camTrack = cam.getVideoTracks()[0];
+    localStream.addTrack(camTrack);
+    peers.forEach((p) => addSender(p, camTrack, localStream));
+    stateChanged();
+  } catch {
+    toast('Não foi possível ligar a câmera. Confira a permissão do navegador.');
+  }
+});
+
+$('#screenBtn').addEventListener('click', async () => {
+  if (screenStream) return stopScreen();
+
+  // Ajustado para jogo: tela inteira, 60 fps, som do sistema sem filtros de voz
+  // e sem a voz dos amigos (restrictOwnAudio tira o som desta página da transmissão).
+  const gameOptions = {
+    video: {
+      displaySurface: 'monitor',
+      frameRate: { ideal: 60, max: 60 },
+      width: { ideal: 1920 },
+      height: { ideal: 1080 },
+    },
+    audio: {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+      suppressLocalAudioPlayback: false,
+      restrictOwnAudio: true,
+    },
+    systemAudio: 'include',
+    monitorTypeSurfaces: 'include',
+    selfBrowserSurface: 'exclude',
+    surfaceSwitching: 'include',
+    preferCurrentTab: false,
+  };
+
+  try {
+    try {
+      screenStream = await navigator.mediaDevices.getDisplayMedia(gameOptions);
+    } catch (err) {
+      if (err && err.name === 'NotAllowedError') throw err; // pessoa cancelou
+      screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+    }
+  } catch {
+    screenStream = null;
+    return;
+  }
+
+  const v = screenStream.getVideoTracks()[0];
+  v.contentHint = 'motion';
+  v.onended = stopScreen; // botão "Parar compartilhamento" do próprio navegador
+  if (!screenStream.getAudioTracks().length) {
+    toast('Sem som do jogo. Pare e compartilhe de novo: escolha "Tela inteira" e marque "Compartilhar áudio do sistema" (Chrome/Edge no Windows).');
+  }
+  peers.forEach((p) => screenStream.getTracks().forEach((t) => addSender(p, t, screenStream, SCREEN_BITRATE[t.kind])));
+  stateChanged();
+});
+
+function stopScreen() {
+  if (!screenStream) return;
+  const s = screenStream;
+  screenStream = null;
+  s.getTracks().forEach((t) => {
+    peers.forEach((p) => removeSender(p, t));
+    t.stop();
+  });
+  stateChanged();
+}
+
+$('#copyBtn').addEventListener('click', async () => {
+  const link = `${location.origin}${location.pathname}#${encodeURIComponent(roomCode)}`;
+  try {
+    await navigator.clipboard.writeText(link);
+    toast('Link copiado.');
+  } catch {
+    toast(link);
+  }
+});
+
+function leaveRoom() {
+  leaving = true;
+  if (ws) ws.close();
+  peers.forEach((p) => p.pc.close());
+  localStream.getTracks().forEach((t) => t.stop());
+  if (screenStream) screenStream.getTracks().forEach((t) => t.stop());
+  location.reload();
+}
+$('#leaveBtn').addEventListener('click', leaveRoom);
+
+window.addEventListener('beforeunload', () => ws && ws.close());
+</script>
+</body>
+</html>

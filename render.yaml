@@ -1,0 +1,10 @@
+# Configuração automática para o Render (Blueprint).
+# Ao conectar o repositório, o Render lê este arquivo e cria o site sozinho.
+services:
+  - type: web
+    name: chamada-amigos
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /
