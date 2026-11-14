@@ -1,13 +1,10 @@
-# Exported from Render on 2026-11-14T01:20:59Z
-version: "1"
+# Configuração automática para o Render (Blueprint).
+# Ao conectar o repositório, o Render lê este arquivo e cria o site sozinho.
 services:
-- type: web
-  name: chamada-amigos-8cab
-  runtime: node
-  repo: https://github.com/marigitcyber/disc2
-  plan: free
-  region: oregon
-  buildCommand: npm install
-  startCommand: npm start
-  healthCheckPath: /
-  autoDeployTrigger: commit
+  - type: web
+    name: chamada-amigos
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz

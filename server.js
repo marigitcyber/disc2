@@ -17,6 +17,11 @@ const TYPES = {
 
 const server = http.createServer((req, res) => {
   const url = req.url.split('?')[0];
+  // Rota simples para o Render confirmar que o servidor está de pé.
+  if (url === '/healthz') {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    return res.end('ok');
+  }
   const file = path.normalize(path.join(PUBLIC, url === '/' ? 'index.html' : url));
   if (!file.startsWith(PUBLIC)) {
     res.writeHead(403);
@@ -24,8 +29,12 @@ const server = http.createServer((req, res) => {
   }
   fs.readFile(file, (err, data) => {
     if (err) {
-      res.writeHead(404);
-      return res.end('Não encontrado');
+      res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
+      return res.end(
+        url === '/'
+          ? 'Servidor no ar, mas a pasta public/index.html não está no repositório. Envie a pasta public para o GitHub.'
+          : 'Não encontrado'
+      );
     }
     res.writeHead(200, { 'Content-Type': TYPES[path.extname(file)] || 'application/octet-stream' });
     res.end(data);
@@ -138,4 +147,4 @@ setInterval(() => {
   }
 }, 30000);
 
-server.listen(PORT, () => console.log(`Rodando em http://localhost:${PORT}`));
+server.listen(PORT, '0.0.0.0', () => console.log(`Rodando na porta ${PORT}`));
